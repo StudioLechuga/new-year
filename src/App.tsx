@@ -3,103 +3,29 @@ import reactLogo from "./assets/react.svg";
 import "./App.css";
 import { mock } from "../MOCK_DATA";
 import { Circle, Layer, Rect, Stage, Text } from "react-konva";
-import { auth, provider, useCards } from "./service/firabese";
 import Modal from "./components/Modal";
+import { useModal } from "./hook/useModal";
+import { useFirebase } from "./hook/useFirebase";
+import { useCard } from "./hook/useCards";
 //import {Hammer} from "https://hammerjs.github.io/dist/hammer.min.js"
 function App() {
-  const [data, setData] = useState<any>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const cords = (initX: number, initY: number, gap: number) => {
-    const arr: any = [[]];
-    let xVal = initX || 0;
-    let yVal = initY || 0;
-    let level = 1;
-    let subLevel = 0;
-    for (let i = 0; i < mock.length; i++) {
-      if (arr[level - 1].length < level) {
-        arr[level - 1].push({
-          x: arr[level - 1][subLevel] ? arr[level - 1][subLevel].x - gap : xVal,
-          y: arr[level - 1][subLevel] ? arr[level - 1][subLevel].y + gap : yVal,
-        });
-        subLevel++;
-      } else {
-        yVal = yVal - gap;
-        xVal = xVal - gap;
-        arr.push([{ x: xVal, y: yVal }]);
-        subLevel = 0;
-        level++;
-      }
-    }
-    const cords = arr.flat();
-    const firstCord = arr[arr.length - 1][0];
-    return {
-      cords,
-      star: cords.findIndex(
-        (item: any) => item.x === firstCord.x && item.y === firstCord.y
-      ),
-    };
-  };
-  const {carts} = useCards();
-  const cordsArr = cords(window.innerWidth, window.innerHeight, 100);
-  useEffect(() => {
-    const newData = carts.map((item: any, index) => ({
-      ...item,
-      ...cordsArr.cords[index],
-      color:
-        index === cordsArr.star
-          ? "#FFD700"
-          : index % 4 !== 0
-          ? "#008000"
-          : "#FF0000",
-    }));
-    setData(newData);
-  }, [carts]);
-
-  const [scale, setScale] = useState({
-    x: 1,
-    y: 1,
-  });
-  const stageRef = useRef(null);
-  console.log(scale);
-  const handleWheel = (e: any) => {
-    const scaleBy = 1.3;
-    const stage = e.target.getStage();
-    const oldScale = stage.scaleX();
-
-    const mousePointTo = {
-      x: stage.getPointerPosition().x / oldScale - stage.x() / oldScale,
-      y: stage.getPointerPosition().y / oldScale - stage.y() / oldScale,
-    };
-
-    const newScale = e.evt.deltaY > 0 ? oldScale * scaleBy : oldScale / scaleBy;
-    setScale({ x: newScale, y: newScale });
-    stage.scale({ x: newScale, y: newScale });
-
-    const newPos = {
-      x: -(mousePointTo.x - stage.getPointerPosition().x / newScale) * newScale,
-      y: -(mousePointTo.y - stage.getPointerPosition().y / newScale) * newScale,
-    };
-    stage.position(newPos);
-    stage.batchDraw();
-  };
-  const handleDtap = (e: any) => {};
-  // var hammertime = new Hammer(stageRef.current, { domEvents: true });
-
-  //     // add rotate gesture
-  //     hammertime.get('rotate').set({ enable: true });
-
-  // now attach all possible events
-  useEffect(() => {
-    console.log(stageRef.current);
-  }, [stageRef]);
+  const { isModalOpen, openModal } = useModal();
+  const { auth, provider, card: item, user } = useFirebase();
+  const { data, scale, stageRef, handleWheel } = useCard();
   const submit = () => {
     auth.signInWithPopup(provider).catch(alert);
   };
-  const openModal = () => {
-    setIsModalOpen(true);
+
+  const handleClick = () => {
+    if (!user.isLoading) {
+      if (!!user.displayName) {
+
+        openModal();
+      } else {
+        submit();
+      }
+    }
   };
-  console.log(auth.currentUser)
   return (
     <>
       <Stage
@@ -109,7 +35,6 @@ function App() {
         draggable
         scale={scale}
         onWheel={handleWheel}
-        onDblTap={handleDtap}
         className="bg-neutral-900"
         to
       >
@@ -138,10 +63,14 @@ function App() {
       </Stage>
       <div className="absolute  bottom-16  w-full h-2 flex items-center justify-center">
         <button
-          onClick={auth.currentUser?.displayName ? openModal : submit}
+          onClick={handleClick}
           className="px-9 py-5 bg-white rounded-md capitalize font-bold text-lg"
         >
-          {auth.currentUser?.displayName ? "Agregar mi proposito" : "login"}
+          {user.isLoading
+            ? "cargando..."
+            : !!user.displayName
+            ? "Agregar mi proposito"
+            : "login"}
         </button>
       </div>
       <div className="absolute md:hidden bottom-2 right-2  gap-1 p-1 flex flex-col">
