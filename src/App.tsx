@@ -1,9 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import reactLogo from "./assets/react.svg";
+import github from "./assets/github-mark.svg";
+import wish from "./assets/wish.svg";
 import "./App.css";
 import { mock } from "../MOCK_DATA";
 import { Circle, Layer, Rect, Stage, Text } from "react-konva";
 import Modal from "./components/Modal";
+import LoadingButton from "./components/LoadingButton";
+import Button from "./components/Button";
 import { useModal } from "./hook/useModal";
 import { useFirebase } from "./hook/useFirebase";
 import { useCard } from "./hook/useCards";
@@ -17,14 +21,11 @@ function App() {
   };
 
   const handleClick = () => {
-    if (!user.isLoading) {
-      if (!!user.displayName) {
-
+      if (user.displayName) {
         openModal();
       } else {
         submit();
       }
-    }
   };
   return (
     <>
@@ -62,16 +63,9 @@ function App() {
         </Layer>
       </Stage>
       <div className="absolute  bottom-16  w-full h-2 flex items-center justify-center">
-        <button
-          onClick={handleClick}
-          className="px-9 py-5 bg-white rounded-md capitalize font-bold text-lg"
-        >
-          {user.isLoading
-            ? "cargando..."
-            : !!user.displayName
-            ? "Agregar mi proposito"
-            : "login"}
-        </button>
+        {user.isLoading ? <LoadingButton /> : (
+          <Button image={user.displayName ? wish : github} children={user.displayName ? 'Agregar deseo' : 'Login'} onClick={handleClick}/>
+        )}
       </div>
       <div className="absolute md:hidden bottom-2 right-2  gap-1 p-1 flex flex-col">
         <button
