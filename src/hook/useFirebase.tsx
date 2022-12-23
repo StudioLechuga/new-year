@@ -1,14 +1,7 @@
 import firebase from "firebase";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, useContext, createContext } from "react";
 import { useModal } from "./useModal";
-const firebaseConfig = {
-  apiKey: "AIzaSyB8qBDJ8ZIAe0wFhAkymWqXBYfxttTAQLU",
-  authDomain: "mynewyearresolutions-27484.firebaseapp.com",
-  projectId: "mynewyearresolutions-27484",
-  storageBucket: "mynewyearresolutions-27484.appspot.com",
-  messagingSenderId: "345771789633",
-  appId: "1:345771789633:web:15ca4c9c208ae425b865c0",
-};
+import firebaseConfig from "../../firebaseConfig";
 
 interface FirebaseContext {
   auth: firebase.auth.Auth;
@@ -22,72 +15,75 @@ interface FirebaseContext {
   user: {
     displayName: string;
     isLoading: boolean;
-    isSuccessful: boolean;
   };
   refecthData: () => void;
 }
+
 firebase.initializeApp(firebaseConfig);
 
 const InitialState = () => {
+  const [user, setUser] = useState<any>({
+    displayName: "",
+    isLoading: true,
+  });
+
   const [card, setcard] = useState([]);
   const [refecth, setRefecth] = useState(false);
   const db = firebase.firestore();
   let auth = firebase.auth();
+
+  useEffect(() => {
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        setUser({ displayName: user.displayName, isLoading: false });
+      } else {
+        setUser({ displayName: "", isLoading: false });
+      }
+    });
+  }, [auth]);
+
   let provider = new firebase.auth.GithubAuthProvider();
+  const addCard = async (card: string) => {
+    return db.collection("card").add({
+      description: card,
+      user: user.displayName,
+    });
+  };
+  const refecthData = () => {
+    setRefecth(!refecth);
+  };
+
   useEffect(() => {
     db.collection("card")
       .orderBy("user", "asc")
       .get()
       .then((snapshot: any) => {
-        const data = snapshot.docs.map((doc: any) => {
+        setcard(snapshot.docs.map((doc: any) => {
           const { description, user } = doc.data();
           return {
             id: doc.id.toString(),
             description,
             user,
           };
-        });
-        setcard(data);
+        }))
       });
   }, [refecth]);
 
-  useEffect(() => {
-    console.log("auth cambio", auth.currentUser?.displayName);
-    if (provider) {
-      setUser({
-        displayName: auth.currentUser?.displayName,
-        isLoading: false,
-        isSuccessful: true,
-      });
-    } else {
-      setUser({
-        displayName: "",
-        isLoading: false,
-        isSuccessful: false,
-      });
-    }
-  }, [auth]);
-  const [user, setUser] = useState<any>({
-    displayName: "",
-    isLoading: true,
-    isSuccessful: false,
-  });
-  const addCard = async (card: string) => {
-    return db.collection("card").add({
-      description: card,
-      user: auth.currentUser?.displayName,
-    });
+  return {
+    auth,
+    provider,
+    card,
+    user,
+    refecthData,
+    addCard,
   };
-  const refecthData = () => {
-    setRefecth(!refecth);
-  };
-  return { auth, provider, refecthData, card, addCard, user };
 };
 
-const FirebaseContext = React.createContext<FirebaseContext>(
+const FirebaseContext = createContext<FirebaseContext>(
   {} as FirebaseContext
 );
-export const useFirebase = () => React.useContext(FirebaseContext);
+
+export const useFirebase = () => useContext(FirebaseContext);
 
 export const FirebaseProvider = ({ children }: any) => {
   const state = InitialState();
